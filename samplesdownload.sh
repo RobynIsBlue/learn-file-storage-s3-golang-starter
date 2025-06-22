@@ -7,7 +7,7 @@ image_urls=(
     "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/boots-image-vertical.png"
     "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/boots-video-horizontal.mp4"
     "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/boots-video-vertical.mp4"
-    "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/is-bootdev-for-you.pdf"
+    "https://storage.googleapis.com/qvault-webapp-dynamic-assets/coursche_assets/is-bootdev-for-you.pdf"
 )
 
 for url in "${image_urls[@]}"; do
