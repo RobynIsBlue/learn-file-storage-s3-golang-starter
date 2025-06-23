@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -82,11 +83,11 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	fmt.Printf("extension: %v\n", extension[0])
-
 	randID := make([]byte, 32)
 	rand.Read(randID)
 	trueRandID := base64.RawStdEncoding.EncodeToString(randID)
-	link := fmt.Sprintf("%s%s", trueRandID, extension[0])
+	randerestID := strings.ReplaceAll(trueRandID, "/", "")
+	link := randerestID + extension[0]
 	joinedPath := filepath.Join(cfg.assetsRoot, link)
 
 	destFile, err := os.Create(joinedPath)
