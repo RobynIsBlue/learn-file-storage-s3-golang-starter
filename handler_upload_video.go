@@ -26,7 +26,6 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(400)
 		return
 	}
-	fmt.Printf("video ID: %s\n", vidUUID)
 	bearToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		log.Printf("could not find bearer token header: %v", err)
@@ -53,6 +52,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(400)
 		return
 	}
+	fmt.Printf("video ID: %s\n", video.ID)
 	if video.UserID != userID {
 		log.Printf("video's user ID and given user ID do not match: %v, %v, %v", err, video.UserID, userID)
 		w.WriteHeader(http.StatusUnauthorized)
