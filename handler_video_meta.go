@@ -118,6 +118,5 @@ func (cfg *apiConfig) handlerVideosRetrieve(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	fmt.Println(userID)
-
 	respondWithJSON(w, http.StatusOK, videos)
 }

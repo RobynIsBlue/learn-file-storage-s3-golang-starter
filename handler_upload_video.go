@@ -68,26 +68,28 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	tempFile, err := os.CreateTemp("", "tubely-upload.mp4")
+	tempFile, err := os.CreateTemp(``, "tubely-upload")
 	if err != nil {
 		log.Printf("could not create temp file: %v", err)
 		w.WriteHeader(500)
 		return
 	}
-
-	// _, err = processVideoForFastStart(tempFile.Name())
-	// if err != nil {
-	// 	log.Printf("could not process video for fast start: %v", err)
-	// 	w.WriteHeader(500)
-	// 	return
-	// }
+	fmt.Println(tempFile.Name())
 
 	defer os.Remove(tempFile.Name())
 	defer tempFile.Close()
 	io.Copy(tempFile, formedFile)
 	tempFile.Seek(0, io.SeekStart)
 
-	aspectRatio, err := getVideoAspectRatio(tempFile.Name())
+	processedFilePath, err := processVideoForFastStart(tempFile.Name())
+	if err != nil {
+		log.Printf("could not process video for fast start: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+	fmt.Println(processedFilePath)
+
+	aspectRatio, err := getVideoAspectRatio(processedFilePath)
 	if err != nil {
 		log.Printf("could not get video aspect ratio: %v", err)
 		w.WriteHeader(500)
@@ -103,6 +105,13 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		ratioName = "other"
 	}
 
+	processedFile, err := os.Open(processedFilePath)
+	if err != nil {
+		log.Printf("could not open processed file: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+
 	bucketName := os.Getenv("S3_BUCKET")
 	randID := make([]byte, 32)
 	rand.Read(randID)
@@ -114,7 +123,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	wuh, err := cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
 		Bucket:      &bucketName,
 		Key:         &stringFileKey,
-		Body:        tempFile,
+		Body:        processedFile,
 		ContentType: &mediaType,
 	})
 	if err != nil {
@@ -122,11 +131,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(500)
 		return
 	}
-
-	newURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s",
-		os.Getenv("S3_BUCKET"),
-		os.Getenv("S3_REGION"),
-		stringFileKey)
+	newURL := os.Getenv("CLOUDFRONT_DOMAIN") + "/" + stringFileKey
 
 	video.ID = vidUUID
 	video.UpdatedAt = time.Now()
@@ -137,6 +142,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	fmt.Printf("video details: %v\n", video)
 
 	cfg.db.UpdateVideo(video)
+
 }
 
 func getVideoAspectRatio(filePath string) (string, error) {
@@ -171,25 +177,14 @@ func getVideoAspectRatio(filePath string) (string, error) {
 	return "other", nil
 }
 
-// func processVideoForFastStart(filePath string) (string, error) {
-// 	outputFilePath := filePath + ".processing"
-// 	cmd := exec.Command("ffmpeg", "-i", "-c", "copy", "-movflags", "faststart", "-f", "mp4", outputFilePath)
-// 	err := cmd.Run()
-// 	var newPath []byte
-// 	cmd.Stdout.Write(newPath)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	if len(newPath) == 0 {
-// 		return "", errors.New("no new path to return")
-// 	}
-// 	file, err := os.Open(string(newPath))
-// 	oldFile, err := os.Open(filePath)
-// 	os.RemoveAll(oldFile.Name())
-// 	num, err := io.Copy(oldFile, file)
-// 	if num == 0 || err != nil {
-// 		log.Printf("could not copy new file to old file path")
-// 		return "", err
-// 	}
-// 	return filePath, nil
-// }
+func processVideoForFastStart(filePath string) (string, error) {
+	outputPath := filePath + ".processed"
+	cmd := exec.Command("ffmpeg", "-i", filePath, "-c", "copy", "-movflags", "faststart", "-f", "mp4", outputPath)
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println(cmd.Stderr)
+		return "", err
+	}
+
+	return outputPath, nil
+}
